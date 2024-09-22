@@ -39,7 +39,7 @@ const NotFound = () => {
 
                                         <div className="pt-5s mx-auto mb-auto h-full p-2">
                                             <div className="grid h-full grid-cols-1 gap-5">
-                                                <Card className="w-full h-full bg-red-500 flex justify-center place-items-center px-2">
+                                                <Card className="w-full h-full bg-red-500 flex justify-center place-items-center px-2 text-center">
                                                     <h1 className="text-4xl font-bold text-red-500 uppercase">404</h1>
                                                     <h2 className="text-2xl font-bold text-red-500 mt-2">Trang không khả dụng</h2>
                                                     <motion.button

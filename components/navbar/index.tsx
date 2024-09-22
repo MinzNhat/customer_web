@@ -19,19 +19,20 @@ import { usePassDataContext } from "@/providers/PassedData";
 import NotiPopup from "../notification";
 import SubmitPopup from "../submit";
 import DetailPopup from "../popup";
-import { AdministrativeOperation, CustomerOperation } from "@/TDLib/main";
+import { AccountOperation, AdministrativeOperation, CustomerOperation, StaffOperation } from "@/TDLib/main";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import { Button } from "@nextui-org/react";
-import { FaPen } from "react-icons/fa";
+import { FaPen, FaSave } from "react-icons/fa";
 import Select from "react-select";
 import { useSettingContext } from "@/providers/SettingProvider";
+import InputField from "../fields/InputField";
 type Props = {};
 
 const Navbar = ({ }: Props) => {
   const [currentRoute, setCurrentRoute] = useState("Loading...");
   const route = useRouter();
   const pathname = usePathname();
-  const { setOpenSidebar } = useSidebarContext();
+  const { openSidebar, setOpenSidebar } = useSidebarContext();
   const { theme, setTheme } = useThemeContext();
   const [username, setUsername] = useState<string>("");
   const [profilePicture, setProfilePicture] = useState<any>(
@@ -48,18 +49,20 @@ const Navbar = ({ }: Props) => {
   const { openSetting, setOpenSetting } = useSettingContext()
   const [modal4, openModal4] = useState(false)
   const [modal5, openModal5] = useState(false)
+  const [modal6, openModal6] = useState(false)
   const [avatarUpload, setavatarUpload] = useState<File | "">("");
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
   const [dataUpdate, setDataUpdate] = useState<any>()
-  const [provinces, setProvinces] = useState([]);
-  const [districts, setDistricts] = useState([]);
-  const [wards, setWards] = useState([]);
-  const [selectedProvince, setSelectedProvince] = useState<any>("");
-  const [selectedDistrict, setSelectedDistrict] = useState<any>("");
-  const [selectedWard, setSelectedWard] = useState<any>("");
-  const adminOperation = new AdministrativeOperation();
-  const imgURL = "https://api2.tdlogistics.net.vn/v2/customers/avatar/get?customerId="
+  const [password, setPassword] = useState({
+    oldPassword: "",
+    newPassword: "",
+    newPassword2: "",
+  })
+  const [openPw, setOpenPw] = useState(false)
+  const imgURL = "https://api2.tdlogistics.net.vn/v2/staffs/avatar/get?staffId="
+  const emailRegex = /^[a-zA-Z0-9._-]{1,64}@[a-zA-Z0-9._-]{1,255}\.[a-zA-Z]{2,4}$/;
+  const phoneNumberRegex = /^[0-9]{10,11}$/;
   const getActiveRoute = (routes: any) => {
     let activeRoute = "orders";
     for (let i = 0; i < routes.length; i++) {
@@ -89,26 +92,26 @@ const Navbar = ({ }: Props) => {
 
   const handleUploadAvatar = async () => {
     if (!avatarUpload) return;
-    const customerOperation = new CustomerOperation()
+    const staffOperation = new StaffOperation()
     setLoading(true)
-    const response = await customerOperation.updateAvatar({ avatar: avatarUpload })
+    const response = await staffOperation.updateAvatar({ avatar: avatarUpload }, { staffId: passData.staffId })
     if (!response.error && !response.error?.error) {
-      setProfilePicture(`${imgURL}${passData.id}`)
+      setProfilePicture(`${imgURL}${passData.staffId}`)
       setavatarUpload("")
     }
     setLoading(false)
   };
 
   const checkUserLoggedIn = async () => {
-    const getinfo = new CustomerOperation()
-    const response = await getinfo.getAuthenticatedCustomerInfo();
-
+    const getinfo = new StaffOperation()
+    const response = await getinfo.getAuthenticatedStaffInfo();
     if (!!response.error || response.error?.error || response.error == undefined) console.log(response)
     else if (!!response.data) {
       setPassData(response.data);
       setDataUpdate(response.data);
-      setUsername(response.data.account.email);
-      setProfilePicture(`${imgURL}${response.data.id}`)
+      setUsername(response.data.account.username);
+      const response2 = await getinfo.getAvatar({ staffId: response.data.staffId })
+      setProfilePicture(response2 && Buffer.byteLength(response2) > 0 ? `${imgURL}${response.data.staffId}` : "/img/avatars/avatar_4.jpg")
     }
 
     if ((!!response.error) || (response.error == undefined)) {
@@ -117,127 +120,16 @@ const Navbar = ({ }: Props) => {
     }
   }
 
-  const handleInputChange = (key: string, value: string) => {
-    setDataUpdate((prevState: any) => ({
-      ...prevState,
-      [key]: value,
-    }));
-  };
-
-  const handleProvinceChange = async (selectedOption: any) => {
-    setSelectedProvince(selectedOption);
-    const a = { province: selectedOption.value };
-    setDataUpdate((prevState: any) => ({
-      ...prevState,
-      province: selectedOption.value,
-      districts: null,
-      ward: null,
-    }));
-    const response = await adminOperation.get(a);
-    setDistricts(response.data);
-    setSelectedDistrict(null);
-    setSelectedWard(null)
-  };
-
-  const handleDistrictChange = async (selectedOption: any) => {
-    setSelectedDistrict(selectedOption);
-    const a = { province: selectedProvince.value, district: selectedOption.value };
-    setDataUpdate((prevState: any) => ({
-      ...prevState,
-      district: selectedOption.value,
-      ward: null,
-    }));
-    const response = await adminOperation.get(a);
-    setWards(response.data);
-    setSelectedWard(null)
-  };
-
-  const handleWardChange = (selectedOption: any) => {
-    setSelectedWard(selectedOption);
-    handleInputChange("town", selectedOption.value);
-  };
-
-  const sortData = (data: any) => {
-    const cities = data.filter((item: any) => item.startsWith("Thành phố"));
-    const provinces = data.filter((item: any) => !item.startsWith("Thành phố"));
-    return cities.concat(provinces);
-  };
-
-  const fetchData = async () => {
-    const response = await adminOperation.get({});
-    if (response.data) {
-      const data = sortData(response.data);
-      setProvinces(data);
-    }
-
-  };
-
-  const styles = {
-    control: (provided: any, state: any) => ({
-      ...provided,
-      backgroundColor: "transparent",
-      border: "none",
-      boxShadow: state.isFocused ? "none" : provided.boxShadow,
-      "&:hover": {
-        border: "none",
-      },
-      color: "#4a5568",
-    }),
-    placeholder: (provided: any) => ({
-      ...provided,
-      color: theme === "dark" ? "#FFFFFF" : "#000000",
-      fontSize: "0.875rem",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    }),
-    input: (provided: any) => ({
-      ...provided,
-      color: theme === "dark" ? "#FFFFFF" : "#000000",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    }),
-    singleValue: (provided: any) => ({
-      ...provided,
-      backgroundColor: "transparent",
-      color: theme === "dark" ? "#FFFFFF" : "#000000",
-      marginTop: "2px"
-    }),
-    menu: (provided: any) => ({
-      ...provided,
-      backgroundColor: theme === "dark" ? "#3A3B3C" : "#FFFFFF",
-    }),
-    menuList: (provided: any) => ({
-      ...provided,
-      backgroundColor: "transparent",
-      maxHeight: "150px",
-      color: theme === "dark" ? "#ffffff" : "#3A3B3C",
-      marginTop: "2px",
-    }),
-    option: (styles: any, { isDisabled, isFocused, isSelected }: any) => {
-      return {
-        ...styles,
-        backgroundColor: isSelected
-          ? (theme === "dark" ? '#242526' : "#E2E8F0")  // Color for selected option
-          : isFocused
-            ? (theme === "dark" ? '#27282a' : "#d1d5db")  // Color for focused option
-            : "transparent",
-        color: isDisabled
-          ? (theme === "dark" ? '#718096' : '#A0AEC0') // Disabled option text color
-          : (theme === "dark" ? '#ffffff' : '#3A3B3C'), // Default option text color
-      };
-    },
-    container: (provided: any, state: any) => ({
-      ...provided,
-      color: "#4a5568",
-    }),
-  };
-
   const submitClick = () => {
-    if ((selectedProvince || selectedDistrict || selectedWard) && !(selectedProvince && selectedDistrict && selectedWard)) {
-      setMessage("Vui lòng chọn đầy đủ thành phố, quận, phường.")
+    if (dataUpdate.account.phoneNumber != passData.account.phoneNumber && !phoneNumberRegex.test(dataUpdate.account.phoneNumber)) {
+      setMessage("Vui lòng nhập đúng định dạng số điện thoại.")
       openModal4(true);
-    } else if ((dataUpdate.fullname != passData.fullname) || (selectedProvince && selectedDistrict && selectedWard) || (dataUpdate.detailAddress != passData.detailAddress)) {
+      return;
+    } else if (dataUpdate.account.email != passData.account.email && !emailRegex.test(dataUpdate.account.email)) {
+      setMessage("Vui lòng nhập đúng định dạng email.")
+      openModal4(true);
+      return;
+    } else if (dataUpdate.account.phoneNumber != passData.account.phoneNumber || dataUpdate.account.email != passData.account.email) {
       setMessage("Xác nhận cập nhật thông tin cá nhân?")
       openModal5(true);
     } else {
@@ -245,31 +137,41 @@ const Navbar = ({ }: Props) => {
     }
   }
 
+  const submitClick4 = () => {
+    if (!password.oldPassword) {
+      setMessage("Vui lòng nhập mật khẩu cũ.")
+      openModal4(true);
+      return;
+    } else if (!password.newPassword) {
+      setMessage("Vui lòng nhập mật khẩu mới.")
+      openModal4(true);
+      return;
+    } else if (password.newPassword != password.newPassword2) {
+      setMessage("Mật khẩu mới không khớp, vui lòng kiểm tra lại.")
+      openModal4(true);
+      return;
+    } else {
+      setMessage("Xác nhận cập nhật mật khẩu?")
+      openModal6(true);
+    }
+  }
+
   const submitClick2 = async () => {
-    const customerOperation = new CustomerOperation();
+    const accountOperation = new AccountOperation()
     let updateData: any = {};  // Initialize updateData as an empty object
 
-    if (dataUpdate.fullname !== passData.fullname) {
-      updateData.fullname = dataUpdate.fullname;
+    if (dataUpdate.account.phoneNumber != passData.account.phoneNumber) {
+      updateData.phoneNumber = dataUpdate.account.phoneNumber;
     }
 
-    if (dataUpdate.detailAddress !== passData.detailAddress) {
-      updateData.detailAddress = dataUpdate.detailAddress;
+    if (dataUpdate.account.email != passData.account.email) {
+      updateData.email = dataUpdate.account.email;
     }
 
-    if (selectedProvince && selectedDistrict && selectedWard) {
-      updateData.province = selectedProvince.value;
-      updateData.district = selectedDistrict.value;
-      updateData.ward = selectedWard.value;
-    }
-
-    const response = await customerOperation.updateInfo({ customerId: passData.id }, updateData);
+    const response = await accountOperation.updateInfo(passData.account.id, updateData);
     if (!response.error && !response.error?.error) {
-      setPassData({ ...passData, ...updateData })
-      setDataUpdate({ ...passData, ...updateData })
-      setSelectedDistrict("")
-      setSelectedProvince("")
-      setSelectedWard("")
+      setPassData({ ...passData, account: { ...passData.account, email: dataUpdate.email, phoneNumber: dataUpdate.phoneNumber } })
+      setDataUpdate({ ...passData, account: { ...passData.account, email: dataUpdate.email, phoneNumber: dataUpdate.phoneNumber } })
       setEditing(false)
       openModal5(false)
       setMessage("Cập nhật thông tin thành công.")
@@ -281,9 +183,23 @@ const Navbar = ({ }: Props) => {
     }
   }
 
+  const submitClick3 = async () => {
+    const accountOperation = new AccountOperation()
+    const updatePassword: any = { password: password.oldPassword, newPassword: password.newPassword };
+    const response = await accountOperation.updatePassword(updatePassword)
+    if (!response.error && !response.error.error) {
+      openModal6(false)
+      setMessage("Cập nhật mật khẩu thành công.")
+      openModal4(true)
+    } else {
+      openModal6(false)
+      setMessage("Cập nhật mật khẩu thất bại, vui lòng kiểm tra lại.")
+      openModal4(true)
+    }
+  }
+
   useEffect(() => {
     checkUserLoggedIn();
-    fetchData()
   }, []);
 
   useEffect(() => {
@@ -313,7 +229,8 @@ const Navbar = ({ }: Props) => {
       {modal2 && <SubmitPopup onClose={() => { openModal2(false); }} message={message} submit={handleLogout} />}
       {modal4 && <NotiPopup onClose={() => { openModal4(false) }} message={message} />}
       {modal5 && <SubmitPopup onClose={() => { openModal5(false); }} message={message} submit={submitClick2} />}
-      {openSetting && passData && <DetailPopup onClose={() => { setDataUpdate(passData); setavatarUpload(""); setSelectedDistrict(""); setSelectedProvince(""); setSelectedWard(""); setEditing(false); setOpenSetting(false); }} title={intl.formatMessage({ id: "Navbar.Title" })} className2="lg:w-fit" children={
+      {modal6 && <SubmitPopup onClose={() => { openModal6(false); }} message={message} submit={submitClick3} />}
+      {openSetting && passData && <DetailPopup onClose={() => { setDataUpdate(passData); setavatarUpload(""); setEditing(false); setOpenSetting(false); }} title={intl.formatMessage({ id: "Navbar.Title" })} className2="lg:w-fit" children={
         <div className="flex flex-col gap-6">
           <div className="w-full flex justify-center">
             <div className="relative flex w-40 h-40 lg:w-60 lg:h-60 hover:cursor-pointer rounded-full overflow-hidden transition-all duration-500 cursor-pointer">
@@ -355,110 +272,68 @@ const Navbar = ({ }: Props) => {
             </div>
           }
 
-          <div className="flex flex-row gap-3 text-[#000000] dark:text-white px-1">
-            <div className="w-32 h-full flex-col flex gap-1">
-              <p className="whitespace-nowrap flex flex-row justify-between gap-2">
-                <span className="font-semibold"><FormattedMessage id="Navbar.Info8" /></span>
-                <span className="font-semibold">:</span>
-              </p>
-              <p className="whitespace-nowrap flex flex-row justify-between gap-2">
-                <span className="font-semibold"><FormattedMessage id="Navbar.Info1" /></span>
-                <span className="font-semibold">:</span>
-              </p>
-              <p className="whitespace-nowrap flex flex-row justify-between gap-2">
-                <span className="font-semibold"><FormattedMessage id="Navbar.Info3" /></span>
-                <span className="font-semibold">:</span>
-              </p>
-              <p className="whitespace-nowrap flex flex-row justify-between">
-                <span className="font-semibold"><FormattedMessage id="Navbar.Info7" /></span>
-                <span className="font-semibold">:</span>
+          <div className="flex flex-col gap-3 text-[#000000] dark:text-white px-1 w-full mb-2">
+            <div className='flex gap-2 w-full'>
+              <div className='w-32 min-w-[128px] flex justify-between'>
+                <strong><FormattedMessage id="Navbar.Info8" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                {passData.fullname ? passData.fullname : "Chưa có thông tin"}
               </p>
             </div>
-            <div className="w-full h-full flex-col flex gap-1 mb-4">
-              <p className="whitespace-nowrap flex flex-row gap-2 relative">
-                {editing ? <input
-                  type="text"
-                  className="focus:outline-none dark:bg-[#242526] w-full"
-                  value={dataUpdate.fullname}
-                  onChange={(e) => {
-                    setDataUpdate({ ...dataUpdate, fullname: e.target.value })
-                  }}
-                /> : (passData.fullname ? passData.fullname : "Chưa có thông tin")}
+            <div className='flex gap-2 w-full'>
+              <div className='w-32 min-w-[128px] flex justify-between'>
+                <strong><FormattedMessage id="Navbar.Info2" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                {editing ?
+                  <input
+                    type="text" className="focus:outline-none dark:bg-[#242526] w-full" value={dataUpdate.account.email}
+                    onChange={(e) => {
+                      setDataUpdate({
+                        ...dataUpdate,
+                        account: { ...dataUpdate.account, email: e.target.value }
+                      });
+                    }}
+                  /> :
+                  (passData.account.email ? passData.account.email : "Chưa có thông tin")}
                 {editing && <span className="absolute bg-[#000000] dark:bg-gray-100 h-[1px] bottom-0 w-full" />}
               </p>
-              <p className="whitespace-nowrap flex flex-row gap-2">
-                {passData.account.email ? passData.account.email : "Chưa có thông tin"}
+            </div>
+            <div className='flex gap-2 w-full'>
+              <div className='w-32 min-w-[128px] flex justify-between'>
+                <strong><FormattedMessage id="Navbar.Info3" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                {editing ?
+                  <input
+                    type="text" className="focus:outline-none dark:bg-[#242526] w-full" value={dataUpdate.account.phoneNumber}
+                    onChange={(e) => {
+                      setDataUpdate({
+                        ...dataUpdate,
+                        account: { ...dataUpdate.account, phoneNumber: e.target.value }
+                      });
+                    }}
+                  /> :
+                  (passData.account.phoneNumber ? passData.account.phoneNumber : "Chưa có thông tin")}
+                {editing && <span className="absolute bg-[#000000] dark:bg-gray-100 h-[1px] bottom-0 w-full" />}
               </p>
-              <p className="flex flex-col sm:flex-row sm:gap-2">
-                {passData.account.phoneNumber ? passData.account.phoneNumber : "Chưa có thông tin"}
+            </div>
+            <div className='flex gap-2 w-full'>
+              <div className='w-32 min-w-[128px] flex justify-between'>
+                <strong><FormattedMessage id="Navbar.Info5" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                {passData.account.role}
               </p>
-              {editing ?
-                <div className="flex flex-col gap-3">
-                  <p className="relative flex">
-                    <input
-                      type="text"
-                      className="focus:outline-none dark:bg-[#242526]"
-                      value={dataUpdate.detailAddress}
-                      onChange={(e) => {
-                        setDataUpdate({ ...dataUpdate, detailAddress: e.target.value })
-                      }}
-                    />
-                    <span className="absolute bg-[#000000] dark:bg-gray-100 h-[1px] bottom-0 w-full" />
-                  </p>
-                  <Select
-                    id="city"
-                    placeholder={intl.formatMessage({
-                      id: "OrderForm.LocationForm.SelectProvince",
-                    })}
-                    aria-label=".form-select-sm"
-                    className={`text-xs md:text-sm text-[#000000] focus:outline-none w-full text-center border rounded-md border-[#000000] dark:border-gray-100`}
-                    value={selectedProvince}
-                    onChange={handleProvinceChange}
-                    //@ts-ignore
-                    options={provinces?.map((city) => ({ value: city, label: city }))}
-                    isSearchable
-                    components={{ DropdownIndicator: () => null, IndicatorSeparator: () => null }}
-                    styles={styles}
-                  />
-                  <Select
-                    id="district"
-                    placeholder={intl.formatMessage({
-                      id: "OrderForm.LocationForm.SelectDistrict",
-                    })}
-                    aria-label=".form-select-sm"
-                    className={`text-xs md:text-sm text-black focus:outline-none w-full text-center border rounded-md border-[#000000] dark:border-gray-100`}
-                    value={selectedDistrict}
-                    onChange={handleDistrictChange}
-                    //@ts-ignore
-                    options={districts?.map((district) => ({
-                      value: district,
-                      label: district,
-                    }))}
-                    isSearchable
-                    components={{ DropdownIndicator: () => null, IndicatorSeparator: () => null }}
-                    styles={styles}
-                  />
-                  <Select
-                    id="ward"
-                    placeholder={intl.formatMessage({
-                      id: "OrderForm.LocationForm.SelectWard",
-                    })}
-                    aria-label=".form-select-sm"
-                    className={`text-xs md:text-sm text-black focus:outline-none w-full text-center border rounded-md border-[#000000] dark:border-gray-100`}
-                    value={selectedWard}
-                    onChange={handleWardChange}
-                    //@ts-ignore
-                    options={wards?.map((ward) => ({ value: ward, label: ward }))}
-                    isSearchable
-                    components={{ DropdownIndicator: () => null, IndicatorSeparator: () => null }}
-                    styles={styles}
-                  />
-                </div>
-                :
-                <p className="flex flex-col">
-                  {(passData.detailAddress || passData.ward || passData.district || passData.province) ? `${passData.detailAddress}, ${passData.ward}, ${passData.district}, ${passData.province}` : "Không có thông tin"}
-                </p>
-              }
+            </div>
+            <div className='flex gap-2 w-full'>
+              <div className='w-32 min-w-[128px] flex justify-between'>
+                <strong><FormattedMessage id="Navbar.Info7" /></strong>
+                :</div>
+              <p className="flex flex-row gap-2 relative w-full">
+                {(passData.detailAddress || passData.town || passData.district || passData.province) ? `${passData.detailAddress}, ${passData.town}, ${passData.district}, ${passData.province}` : "Không có thông tin"}
+              </p>
             </div>
           </div>
 
@@ -471,6 +346,88 @@ const Navbar = ({ }: Props) => {
               className="rounded-lg lg:h-11 w-full text-green-500 border-green-500 hover:border-green-600 bg-transparent hover:text-white border-2 hover:bg-green-600 hover:shadow-md flex sm:gap-2"
             >
               <FaPen /> {editing ? "Cập nhật" : "Chỉnh sửa"}
+            </Button>
+          </div>
+        }
+      />}
+
+      {openPw && passData && <DetailPopup onClose={() => { setOpenPw(false); }} title={intl.formatMessage({ id: "Navbar.Title" })} className2="lg:w-fit" children={
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3 text-[#000000] dark:text-white px-1 w-full mb-2">
+            <div className='flex gap-2 w-full flex-col lg:flex-row'>
+              <div className='lg:w-44 lg:min-w-[11rem] flex lg:justify-between place-items-center'>
+                <strong><FormattedMessage id="Navbar.Password1" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                <InputField
+                  variant="auth1"
+                  id="oldPw"
+                  type="password"
+                  value={password.oldPassword}
+                  setValue={(e: any) => {
+                    setPassword({
+                      ...password,
+                      oldPassword: e
+                    });
+                  }}
+                  className="bg-white dark:!bg-[#3a3b3c] w-full"
+                  extra="w-full"
+                />
+              </p>
+            </div>
+            <div className='flex gap-2 w-full flex-col lg:flex-row'>
+              <div className='lg:w-44 lg:min-w-[11rem] flex lg:justify-between place-items-center'>
+                <strong><FormattedMessage id="Navbar.Password2" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                <InputField
+                  variant="auth1"
+                  id="newPw1"
+                  type="password"
+                  value={password.newPassword}
+                  setValue={(e: any) => {
+                    setPassword({
+                      ...password,
+                      newPassword: e
+                    });
+                  }}
+                  className="bg-white dark:!bg-[#3a3b3c] w-full"
+                  extra="w-full"
+                />
+              </p>
+            </div>
+            <div className='flex gap-2 w-full flex-col lg:flex-row'>
+              <div className='lg:w-44 lg:min-w-[11rem] flex lg:justify-between place-items-center'>
+                <strong><FormattedMessage id="Navbar.Password3" /></strong>
+                :</div>
+              <p className="whitespace-nowrap flex flex-row gap-2 relative w-full">
+                <InputField
+                  variant="auth1"
+                  id="newPw2"
+                  type="password"
+                  value={password.newPassword2}
+                  setValue={(e: any) => {
+                    setPassword({
+                      ...password,
+                      newPassword2: e
+                    });
+                  }}
+                  className="bg-white dark:!bg-[#3a3b3c] w-full"
+                  extra="w-full"
+                />
+              </p>
+            </div>
+          </div>
+
+        </div>
+      }
+        button={
+          <div className="w-full flex bottom-0 bg-white pt-2 dark:bg-[#242526] gap-2">
+            <Button
+              onClick={submitClick4}
+              className="rounded-lg lg:h-11 w-full text-green-500 border-green-500 hover:border-green-600 bg-transparent hover:text-white border-2 hover:bg-green-600 hover:shadow-md flex sm:gap-2"
+            >
+              <FaSave /> Xác nhận
             </Button>
           </div>
         }
@@ -535,8 +492,8 @@ const Navbar = ({ }: Props) => {
             />
           </div>
           <span
-            className="flex cursor-pointer text-xl text-gray-600 dark:text-white xl:hidden"
-            onClick={() => setOpenSidebar(true)}
+            className="flex cursor-pointer text-xl text-gray-600 dark:text-white"
+            onClick={() => setOpenSidebar(!openSidebar)}
           >
             <FiAlignJustify className="h-5 w-5" />
           </span>
@@ -587,6 +544,14 @@ const Navbar = ({ }: Props) => {
                   className="mt-3 text-sm font-medium text-navy-700 dark:text-white"
                 >
                   <FormattedMessage id="Navbar.Info" />
+                </button>
+              </div>
+              <div className="flex flex-col pb-3 px-3 -mt-2">
+                <button
+                  onClick={() => { setOpenPw(true) }}
+                  className="mt-3 text-sm font-medium text-navy-700 dark:text-white"
+                >
+                  <FormattedMessage id="Navbar.Password" />
                 </button>
               </div>
               <div className="h-px w-full bg-gray-200 dark:bg-white/20 " />

@@ -10,8 +10,6 @@ type Props = {
 
 const Checkbox = (props: Props) => {
     const { id, className, color, checked } = props;
-
-
     return (
         <input
             id={id}

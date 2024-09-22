@@ -34,9 +34,8 @@ const SidebarLinks = ({ onClickRoute }: Props) => {
   };
 
   const createLinks = (routes: any) => {
-    const toolRoutes = routes.filter((route: { path: string }) => route.path === "orders");
-    const managementRoutes = routes.filter((route: { path: string }) => route.path === "history");
-    const helpRoutes = routes.filter((route: { path: string }) => route.path === "help");
+    const managementRoutes = routes.filter((route: { path: string }) => route.path === "orders" || route.path === "shipments");
+    const helpRoutes = routes.filter((route: { path: string }) => route.path !== "orders" && route.path !== "shipments" && route.path !== "create");
 
     const renderLinks = (routes: any, startIndex: number, headerId: string) => (
       <div>
@@ -78,8 +77,7 @@ const SidebarLinks = ({ onClickRoute }: Props) => {
 
     return (
       <>
-        {renderLinks(toolRoutes, 0, "routes.orders2")}
-        {renderLinks(managementRoutes, 1, "routes.manage")}
+        {renderLinks(managementRoutes, 0, "routes.manage")}
         {renderLinks(helpRoutes, 2, "routes.helpcenter")}
       </>
     );

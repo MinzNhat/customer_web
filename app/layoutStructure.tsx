@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import UserProvider from "@/providers/PassedData";
 import { usePathname, useSearchParams } from 'next/navigation';
 import { FormattedMessage, IntlProvider } from 'react-intl';
+import SidebarProvider from "@/providers/SidebarProvider";
 export const CustomLoadingElement = () => {
   return (
     <div className="w-full h-screen flex flex-col gap-4 justify-center place-items-center dark:text-white bg-white dark:bg-[#3a3b3c]">
@@ -45,7 +46,9 @@ export default function layoutStructure({
       >
 
         <UserProvider>
-          <Suspense fallback={<CustomLoadingElement />}>{childrenProps}</Suspense>
+          <SidebarProvider>
+            <Suspense fallback={<CustomLoadingElement />}>{childrenProps}</Suspense>
+          </SidebarProvider>
         </UserProvider>
 
       </LoadScript>

@@ -9,9 +9,10 @@ interface SubmitPopupProps {
     ref?: any;
     submit: () => void;
     name?: string
+    title?: string;
 }
 
-const SubmitPopup: React.FC<SubmitPopupProps> = ({ onClose, message, ref, submit, name }) => {
+const SubmitPopup: React.FC<SubmitPopupProps> = ({ onClose, message, ref, submit, name, title }) => {
     const notificationRef = useRef<HTMLDivElement>(null);
     const [isVisible, setIsVisible] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -75,7 +76,7 @@ const SubmitPopup: React.FC<SubmitPopupProps> = ({ onClose, message, ref, submit
                 exit={{ scale: 0 }}
                 transition={{ duration: 0.5 }}
             >
-                <h2 className="text-[#000000] dark:text-gray-500 text-xl font-bold mb-2 text-center"><FormattedMessage id="Notification.Title" /></h2>
+                <h2 className="text-[#000000] dark:text-gray-500 text-xl font-bold mb-2 text-center">{title ?? <FormattedMessage id="Notification.Title" />}</h2>
                 <div className="overflow-scroll max-h-full w-full no-scrollbar"><p className="text-[#000000] dark:text-white w-full text-center">{message}</p></div>
 
                 <div className="flex w-full justify-between gap-2">

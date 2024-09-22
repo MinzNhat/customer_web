@@ -87,7 +87,6 @@ const ParticlesBackground = (props: any) => {
   }, [init, theme]);
 
   const particlesLoaded = (container: any) => {
-    console.log(container);
   };
 
   return (

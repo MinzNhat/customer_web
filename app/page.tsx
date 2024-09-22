@@ -15,9 +15,10 @@ import { Variants, motion, useAnimation } from "framer-motion";
 import cloudData from '@/data/cloud.json';
 import bikeData from '@/data/lottie.json';
 import dynamic from "next/dynamic";
-import { AuthOperation } from "@/TDLib/main";
+import { AuthOperation, LoginOption } from "@/TDLib/main";
 import OTPField from "@/components/otp";
 import DetailPopup from "@/components/popup";
+import Link from "next/link";
 const Lottie = dynamic(() => import('lottie-react'), {
   ssr: false,
 });
@@ -27,9 +28,8 @@ const AuthPage: FC<Props> = () => {
   const [modal, setModal] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState(false);
-  const [role, setRole] = useState(1);
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [account, setAccount] = useState("");
+  const [password, setPassword] = useState("");
   const route = useRouter();
   const [loading, setLoading] = useState(false)
   const intl = useIntl();
@@ -40,37 +40,33 @@ const AuthPage: FC<Props> = () => {
   const [isAnimated, setIsAnimated] = useState(false);
   const authOperation = new AuthOperation();
   const [otp, setshowOtp] = useState(false)
-  const emailRegex = /^[a-zA-Z0-9._-]{1,64}@[a-zA-Z0-9._-]{1,255}\.[a-zA-Z]{2,4}$/;
-  const phoneNumberRegex = /^[0-9]{1,10}$/;
 
   const handleCheckField = () => {
-    if (!email || !phoneNumber) {
+    if (!account || !password) {
       setError(true);
       setMessage(intl.formatMessage({ id: "Login.Message1" }));
-      setModal(true);
-      return true;
-    } else if (!emailRegex.test(email) || !phoneNumberRegex.test(phoneNumber)) {
-      setError(true);
-      setMessage("Vui lòng nhập đúng định dạng email và số điện thoại.");
       setModal(true);
       return true;
     }
     return false;
   };
 
-  const handlePhoneNumberChange = (value: string) => {
+  const handlepasswordChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, "");
-    setPhoneNumber(numericValue);
+    setPassword(numericValue);
   };
 
   const handleSignUpButton = async () => {
     if (handleCheckField()) return;
     setLoading(true)
-    const response = await authOperation.sendOtp({ email: email.trim(), phoneNumber: phoneNumber.trim() })
-    if (!response.error && !response.error?.error) {
-      setshowOtp(true)
+    const response = await authOperation.login({ username: account.trim(), password: password.trim() }, LoginOption["STAFF"])
+    if (response.error || response.error?.error) {
+      setMessage("Xác thực thất bại, vui lòng kiểm tra lại!")
+      setModal(true)
+      setError(true)
+      setLoading(false)
     } else {
-      setMessage("Gửi OTP thất bại, vui lòng thử lại sau.")
+      setMessage("Xác thực thành công!")
       setModal(true)
       setLoading(false)
     }
@@ -95,7 +91,7 @@ const AuthPage: FC<Props> = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [email, phoneNumber]);
+  }, [account, password]);
 
   useEffect(() => {
     setIsAnimated(true);
@@ -110,12 +106,6 @@ const AuthPage: FC<Props> = () => {
         {modal && (
           <NotiPopup message={message} onClose={handleNotificationClose} />
         )}
-        {otp && <DetailPopup onClose={() => { setLoading(false); setshowOtp(false) }} title="Nhập OTP" className2="sm:w-fit">
-          <div className="flex flex-col gap-4">
-            <OTPField email={email} phoneNumber={phoneNumber} setMessage={setMessage} setModal={setModal} setError={setError} />
-            <div className="text-center">Vui lòng kiểm tra email !</div>
-          </div>
-        </DetailPopup>}
         <main className={`mx-auto min-h-screen`}>
           <div className="relative flex h-screen lg:p-8 xl:p-16">
             <div className={`mx-auto min-h-full h-full w-full relative rounded-xl bg-white dark:!bg-[#242526]`}>
@@ -145,16 +135,17 @@ const AuthPage: FC<Props> = () => {
                     </div>
 
                     <div
-                      onClick={() => { setIsAnimated(!isAnimated) }}
                       className="flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-white border hover:cursor-pointer dark:bg-[#3a3b3c]">
-                      <button
+                      <Link
+
+                        href="https://app.tdlogistics.net.vn/"
                         className="flex items-center gap-2 h-[50px]"
                       >
                         <Image src="/Logo.png" alt="Your image" width={20} height={20} />
                         <span className="text-[14px] font-medium text-[#000000] dark:text-white font-sans focus:outline-none">
-                          {role == 1 ? <FormattedMessage id="Login.Role" /> : <FormattedMessage id="Login.Role2" />}
+                          <FormattedMessage id="Login.Role" />
                         </span>
-                      </button>
+                      </Link>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="h-px w-full bg-gray-200" />
@@ -167,28 +158,28 @@ const AuthPage: FC<Props> = () => {
                     <div className="flex items-center place-items-center">
                       <p className="text-base w-full text-center font-bold dark:text-white font-sans">
                         {" "}
-                        {role == 1 ? <FormattedMessage id="Login.Role3" /> : <FormattedMessage id="Login.Role4" />}{" "}
+                        <FormattedMessage id="Login.Role3" />
                       </p>
                     </div>
-                    {/* email */}
+                    {/* account */}
                     <InputField
                       variant="auth"
                       label={intl.formatMessage({ id: "Login.Box1" })}
                       placeholder={intl.formatMessage({ id: "Login.PlaceHolder" })}
-                      id="email"
+                      id="account"
                       type="text"
-                      value={email}
-                      setValue={setEmail}
+                      value={account}
+                      setValue={setAccount}
                       className="bg-white dark:!bg-[#3a3b3c]"
                     />
                     <InputField
                       variant="auth"
                       label={intl.formatMessage({ id: "Login.Box2" })}
                       placeholder={intl.formatMessage({ id: "Login.PlaceHolder2" })}
-                      id="phoneNumber"
-                      type="text"
-                      value={phoneNumber}
-                      setValue={handlePhoneNumberChange}
+                      id="password"
+                      type="password"
+                      value={password}
+                      setValue={setPassword}
                       className="bg-white dark:!bg-[#3a3b3c]"
                     />
                     <div className="flex gap-3 mt-4">

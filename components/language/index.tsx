@@ -11,7 +11,7 @@ const LanguageSwitcher = ({ message, animation, animation2, className }: { messa
     const searchParams = useSearchParams();
     const initialLocale = searchParams.get('locale') || 'vi';
     const [locale, setLocale] = useState(initialLocale);
-    const [dropdownOpen, setDropdownOpen] = useState(false); // State for dropdown open/close
+    const [dropdownOpen, setDropdownOpen] = useState(true);
 
     useEffect(() => {
         const newSearchParams = new URLSearchParams(Array.from(searchParams.entries()));

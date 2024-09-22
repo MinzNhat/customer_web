@@ -25,7 +25,6 @@ const OTPField: FC<OptFieldProps> = ({ phoneNumber, email, setMessage, setModal,
     ): void => {
         const { value } = target;
         if (value && value !== "0" && !Number(value)) {
-            // console.log(!Number(value));
             return;
         }
         const newOTP: string[] = [...otp1];
